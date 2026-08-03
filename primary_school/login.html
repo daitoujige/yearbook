@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>同学录 · 登录</title>
+    <!-- 引入 Supabase 客户端（使用 CDN） -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+
+    <!-- 如果已登录则跳转 -->
+    <script>
+        if (sessionStorage.getItem('is_logged_in') === 'true') {
+            window.location.href = 'index.html';
+        }
+        console.log('✅ 登录页脚本开始执行');
+    </script>
+
+    <style>
+        /* ---------- 全局：黑底白字 ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0b0b0b;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-card {
+            background: #1a1a1a;
+            border-radius: 28px;
+            padding: 48px 40px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            border: 1px solid #2a2a2a;
+        }
+        .login-card h1 {
+            font-size: 34px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+            letter-spacing: 1px;
+        }
+        .login-card .sub {
+            color: #aaaaaa;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .login-card .example-box {
+            background: #ffffff;
+            color: #000000;
+            padding: 16px 18px;
+            border-radius: 14px;
+            margin-bottom: 28px;
+            font-size: 15px;
+            line-height: 1.7;
+            border-left: 6px solid #8888ff;
+        }
+        .login-card .example-box strong {
+            color: #222;
+        }
+        .login-card .example-box .highlight {
+            background: #e0e7ff;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 15px;
+        }
+        .login-card label {
+            display: block;
+            font-size: 17px;
+            font-weight: 600;
+            color: #dddddd;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+        .login-card input {
+            width: 100%;
+            padding: 20px 18px;
+            font-size: 20px;
+            border: 2px solid #333333;
+            border-radius: 16px;
+            background: #0d0d0d;
+            color: #ffffff;
+            margin-bottom: 24px;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .login-card input:focus {
+            outline: none;
+            border-color: #8888ff;
+            box-shadow: 0 0 0 4px rgba(136, 136, 255, 0.2);
+            background: #111111;
+        }
+        .login-card input::placeholder {
+            color: #666666;
+            font-size: 17px;
+        }
+        .login-card button {
+            width: 100%;
+            padding: 20px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+            background: #5555dd;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: background 0.25s, transform 0.1s;
+            margin-top: 6px;
+        }
+        .login-card button:hover {
+            background: #6a6aff;
+        }
+        .login-card button:active {
+            transform: scale(0.97);
+        }
+        .login-card button:disabled {
+            background: #444444;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .login-card .msg {
+            margin-top: 22px;
+            font-size: 17px;
+            text-align: center;
+            min-height: 30px;
+            font-weight: 500;
+        }
+        .login-card .msg.error {
+            color: #ff6b6b;
+        }
+        .login-card .msg.success {
+            color: #69db7c;
+        }
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 32px 20px;
+            }
+            .login-card h1 {
+                font-size: 28px;
+            }
+            .login-card input {
+                padding: 16px 14px;
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h1>📚 同学录</h1>
+        <p class="sub">请输入你的学号和姓名</p>
+
+        <!-- 范例提示（使用虚构的“格调市死尸小学”格式） -->
+        <div class="example-box">
+            <strong>📌 填写示例</strong><br>
+            <span style="font-size:14px; color:#333;">
+                学号：<span class="highlight">GeDiaoSiShi78910091</span> &nbsp;|&nbsp; 姓名：<span class="highlight">张三</span>
+            </span><br>
+            <span style="font-size:13px; color:#555;">
+                （格式：格调市死尸小学7891年入学·0班91号 → GeDiaoSiShi78910091）
+            </span>
+        </div>
+
+        <label for="idInput">学号</label>
+        <input type="text" id="idInput" placeholder="例如：GeDiaoSiShi78910091" autocomplete="off">
+
+        <label for="nameInput">姓名</label>
+        <input type="text" id="nameInput" placeholder="例如：张三" autocomplete="off">
+
+        <button id="loginBtn">🔑 进入同学录</button>
+        <div class="msg" id="msg"></div>
+    </div>
+
+    <script>
+        // ==============================================================
+        // ★★★ 配置区：请替换为你的真实 Supabase 信息 ★★★
+        // ==============================================================
+        const SUPABASE_URL = 'https://rpmtgbxbeozqtjaubexs.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_kji7RPyknvsTQAWWpLySHA_UuQi0pjq';
+
+        console.log('🔑 配置加载完成');
+
+        // ★★★ 修正：使用 window.supabase（因为 CDN 暴露的是全局 supabase） ★★★
+        // 如果 CDN 加载失败，window.supabase 会是 undefined，需做保护
+        if (typeof supabase === 'undefined') {
+            document.getElementById('msg').textContent = '⚠️ 加载 Supabase 客户端失败，请检查网络或刷新重试';
+            document.getElementById('msg').className = 'msg error';
+            throw new Error('Supabase 客户端未加载');
+        }
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase 客户端初始化成功');
+
+        // ---------- DOM ----------
+        const idInput = document.getElementById('idInput');
+        const nameInput = document.getElementById('nameInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const msgEl = document.getElementById('msg');
+
+        console.log('✅ DOM 元素获取成功');
+
+        function showMsg(text, type) {
+            msgEl.textContent = text;
+            msgEl.className = 'msg ' + type;
+        }
+        function clearMsg() { msgEl.textContent = ''; msgEl.className = 'msg'; }
+
+        // ---------- 登录 ----------
+        async function handleLogin() {
+            console.log('🖱️ handleLogin 被调用了');
+            alert('点击了！'); // 测试用
+
+            const id = idInput.value.trim();
+            const name = nameInput.value.trim();
+
+            if (!id || !name) {
+                showMsg('⚠️ 学号和姓名都不能为空', 'error');
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = '⏳ 验证中...';
+            clearMsg();
+
+            try {
+                const { data, error } = await supabaseClient.rpc('verify_student', {
+                    input_id: id,
+                    input_name: name
+                });
+
+                if (error) {
+                    console.error('RPC 错误:', error);
+                    showMsg('学号或姓名错误，请重试', 'error');
+                    return;
+                }
+
+                if (!data.success) {
+                    showMsg(data.message || '学号或姓名错误，请重试', 'error');
+                    return;
+                }
+
+                // 登录成功
+                sessionStorage.setItem('is_logged_in', 'true');
+                sessionStorage.setItem('user_info', JSON.stringify(data.user));
+
+                showMsg('✅ 登录成功！正在跳转...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 500);
+
+            } catch (err) {
+                console.error('登录异常:', err);
+                showMsg('学号或姓名错误，请重试', 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = '🔑 进入同学录';
+            }
+        }
+
+        // 事件绑定
+        loginBtn.addEventListener('click', handleLogin);
+        idInput.addEventListener('keyup', e => { if (e.key === 'Enter') handleLogin(); });
+        nameInput.addEventListener('keyup', e => { if (e.key === 'Enter') handleLogin(); });
+
+        console.log('✅ 事件绑定完成');
+        console.log('🔐 登录页已加载');
+    </script>
+</body>
+</html>
