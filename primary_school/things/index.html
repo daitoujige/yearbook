@@ -296,26 +296,24 @@
     </div>
 
     <!-- ============================================================
-    4. Supabase 初始化 & 数据加载脚本（仅新增逻辑，不改动已有样式）
+    4. Supabase 初始化 & 数据加载脚本
     ============================================================ -->
     <script>
         (function() {
             'use strict';
 
-            // ---------- Supabase 配置（已提供，修正 URL） ----------
+            // ---------- Supabase 配置 ----------
             const SUPABASE_URL = 'https://rpmtgbxbeozqtjaubexs.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_kji7RPyknvsTQAWWpLySHA_UuQi0pjq';
 
-            // 初始化 Supabase 客户端（如果全局已有则复用）
             if (typeof supabaseClient === 'undefined') {
                 window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
 
-            // ---------- DOM 引用 ----------
             const listContainer = document.getElementById('storyList');
             const badge = document.getElementById('loginBadge');
 
-            // ---------- 登录状态徽章（复用 sign_in.js 逻辑） ----------
+            // ---------- 登录状态徽章 ----------
             function updateBadge(loggedIn) {
                 if (loggedIn) {
                     badge.textContent = '✅ 已登录';
@@ -329,7 +327,6 @@
             }
 
             function checkLogin() {
-                // 尝试从 window 上获取 sign_in.js 暴露的函数
                 const candidates = [
                     window.isLoggedIn,
                     window.checkLogin,
@@ -341,8 +338,7 @@
                         try {
                             const result = fn();
                             if (result && typeof result.then === 'function') {
-                                result.then(function(val) { updateBadge(!!val); }).catch(function() { updateBadge(
-                                    false); });
+                                result.then(function(val) { updateBadge(!!val); }).catch(function() { updateBadge(false); });
                                 return;
                             }
                             updateBadge(!!result);
@@ -354,84 +350,84 @@
                         }
                     }
                 }
-                // 默认未登录
                 updateBadge(false);
             }
 
-            // ---------- 加载文章列表（核心逻辑，与示例一致） ----------
+            // ---------- 加载文章列表（调用 RPC get_stories，排序已在 SQL 中改为 ASC） ----------
             async function loadStories() {
-    try {
-        listContainer.innerHTML = '<div class="empty-state">⏳ 加载中...</div>';
+                try {
+                    listContainer.innerHTML = '<div class="empty-state">⏳ 加载中...</div>';
 
-        // 获取用户学号
-        const userInfo = sessionStorage.getItem('user_info');
-        if (!userInfo) {
-            listContainer.innerHTML = '<div class="error-state">❌ 未获取到用户信息，请重新登录。</div>';
-            return;
-        }
-        const user = JSON.parse(userInfo);
-        const userId = user.id;
+                    // 获取当前用户信息（来自 sessionStorage）
+                    const userInfo = sessionStorage.getItem('user_info');
+                    if (!userInfo) {
+                        listContainer.innerHTML = '<div class="error-state">❌ 未获取到用户信息，请重新登录。</div>';
+                        return;
+                    }
+                    const user = JSON.parse(userInfo);
+                    const userId = user.id;
 
-        // 调用 RPC 函数 get_stories
-        const { data, error } = await window.supabaseClient.rpc('get_stories', {
-            p_user_id: userId
-        });
+                    // 调用 RPC 函数 get_stories（已修改排序为 ASC）
+                    const { data, error } = await window.supabaseClient.rpc('get_stories', {
+                        p_user_id: userId
+                    });
 
-        if (error) {
-            console.error('[班级趣事] RPC 调用失败:', error);
-            listContainer.innerHTML = `
-                <div class="error-state">
-                    ❌ 加载失败。<br>
-                    <span style="font-size:0.8rem;color:#555;">错误详情：${error.message || error}</span>
-                </div>
-            `;
-            return;
-        }
+                    if (error) {
+                        console.error('[班级趣事] RPC 调用失败:', error);
+                        listContainer.innerHTML = `
+                            <div class="error-state">
+                                ❌ 加载失败。<br>
+                                <span style="font-size:0.8rem;color:#555;">错误详情：${error.message || error}</span>
+                            </div>
+                        `;
+                        return;
+                    }
 
-        if (!data || !data.success) {
-            listContainer.innerHTML = `
-                <div class="error-state">❌ ${data?.message || '无权限访问趣事'}</div>
-            `;
-            return;
-        }
+                    if (!data || !data.success) {
+                        listContainer.innerHTML = `
+                            <div class="error-state">❌ ${data?.message || '无权限访问趣事'}</div>
+                        `;
+                        return;
+                    }
 
-        const stories = data.stories || [];
-        if (stories.length === 0) {
-            listContainer.innerHTML = `<div class="empty-state">📭 还没有趣事，快来添加吧！</div>`;
-            return;
-        }
+                    const stories = data.stories || [];
+                    if (stories.length === 0) {
+                        listContainer.innerHTML = `<div class="empty-state">📭 还没有趣事，快来添加吧！</div>`;
+                        return;
+                    }
 
-        // 渲染列表
-        let html = '';
-        stories.forEach(function(item) {
-            const id = item.id;
-            const title = item.title || '（无标题）';
-            const safeTitle = title.replace(/[&<>"]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                if (m === '"') return '&quot;';
-                return m;
-            });
-            html += `
-                <a class="article-btn" href="story.html?id=${id}">
-                    <span class="num">#${String(id).padStart(2, '0')}</span>
-                    <span class="title">${safeTitle}</span>
-                    <span class="arrow">→</span>
-                </a>
-            `;
-        });
-        listContainer.innerHTML = html;
+                    // 渲染列表（数据已按 id ASC 排好）
+                    let html = '';
+                    stories.forEach(function(item) {
+                        const id = item.id;
+                        const title = item.title || '（无标题）';
+                        const safeTitle = title.replace(/[&<>"]/g, function(m) {
+                            if (m === '&') return '&amp;';
+                            if (m === '<') return '&lt;';
+                            if (m === '>') return '&gt;';
+                            if (m === '"') return '&quot;';
+                            return m;
+                        });
+                        html += `
+                            <a class="article-btn" href="story.html?id=${id}">
+                                <span class="num">#${String(id).padStart(2, '0')}</span>
+                                <span class="title">${safeTitle}</span>
+                                <span class="arrow">→</span>
+                            </a>
+                        `;
+                    });
+                    listContainer.innerHTML = html;
 
-    } catch (err) {
-        console.error('[班级趣事] 加载异常:', err);
-        listContainer.innerHTML = `
-            <div class="error-state">❌ 加载失败，请检查网络连接。<br>
-            <span style="font-size:0.8rem;color:#555;">${err.message || ''}</span></div>
-        `;
-    }
-}
-            // ---------- 页面初始化 ----------
+                } catch (err) {
+                    console.error('[班级趣事] 加载异常:', err);
+                    listContainer.innerHTML = `
+                        <div class="error-state">❌ 加载失败，请检查网络连接。<br>
+                        <span style="font-size:0.8rem;color:#555;">${err.message || ''}</span></div>
+                    `;
+                }
+            }
+
+            // ---------- 初始化 ----------
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function() {
                     checkLogin();
@@ -442,7 +438,6 @@
                 loadStories();
             }
 
-            // 暴露刷新方法，方便调试
             window.refreshStories = loadStories;
             window.refreshLoginBadge = checkLogin;
 
