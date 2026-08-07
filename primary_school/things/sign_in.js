@@ -1,4 +1,4 @@
-<script>
+
     (function () {
         // 检查登录状态
         if (sessionStorage.getItem('is_logged_in') !== 'true') {
@@ -8,4 +8,4 @@
             throw new Error('未登录，已跳转');
         }
     })();
-</script>
+
