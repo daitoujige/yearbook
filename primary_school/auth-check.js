@@ -1,9 +1,13 @@
-// auth-check.js
+// 立即执行函数，暴露登录检查函数
 (function() {
-    // 检查是否已登录
-    var isLoggedIn = sessionStorage.getItem('is_logged_in');
-    if (isLoggedIn !== 'true') {
-        // 未登录，立即跳转到登录页
-        window.location.href = 'login.html';
+    // 登录检查函数（暴露到全局）
+    window.isLoggedIn = function() {
+        return sessionStorage.getItem('is_logged_in') === 'true';
+    };
+
+    // 原有的跳转逻辑（保留）
+    if (!window.isLoggedIn()) {
+        window.location.replace('login.html');
+        throw new Error('未登录，已跳转');
     }
 })();
