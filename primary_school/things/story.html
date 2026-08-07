@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班级趣事 · 同学录</title>
+
+    <!-- ===== 加载本地库（marked / highlight） ===== -->
+    <script src="marked.min.js"></script>
+    <script src="highlight.min.js"></script>
+
+    <!-- ===== 加载 Supabase JS SDK（CDN） ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+    <style>
+        /* ========== 全局基础样式（默认深色，通过 body.light 切换浅色） ========== */
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #e6edf3;
+            --code-bg: #161b22;
+            --border-color: #30363d;
+            --blockquote-border: #30363d;
+            --link-color: #58a6ff;
+            --table-border: #30363d;
+            --nav-bg: #161b22;
+            --button-bg: #21262d;
+            --button-text: #c9d1d9;
+        }
+        body.light {
+            --bg-color: #ffffff;
+            --text-color: #24292f;
+            --code-bg: #f6f8fa;
+            --border-color: #d0d7de;
+            --blockquote-border: #d0d7de;
+            --link-color: #0969da;
+            --table-border: #d0d7de;
+            --nav-bg: #f6f8fa;
+            --button-bg: #f0f0f0;
+            --button-text: #24292f;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        /* ---------- 工具栏 ---------- */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .toolbar button {
+            padding: 8px 18px;
+            font-size: 15px;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--button-bg);
+            color: var(--button-text);
+            transition: 0.2s;
+        }
+        .toolbar button:hover {
+            opacity: 0.8;
+        }
+        .toolbar a {
+            text-decoration: none;
+        }
+
+        /* ---------- Markdown 预览区 ---------- */
+        #preview {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 30px 20px;
+            border-radius: 8px;
+            transition: background 0.2s, color 0.2s;
+        }
+        #preview h1, #preview h2 {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+        #preview code {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        }
+        #preview pre {
+            background-color: var(--code-bg);
+            padding: 16px;
+            border-radius: 6px;
+            overflow: auto;
+        }
+        #preview blockquote {
+            border-left: 0.25em solid var(--blockquote-border);
+            padding-left: 1em;
+            opacity: 0.8;
+        }
+        #preview table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        #preview td, #preview th {
+            border: 1px solid var(--table-border);
+            padding: 6px 13px;
+        }
+        #preview a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+        #preview a:hover {
+            text-decoration: underline;
+        }
+        #preview img {
+            max-width: 100%;
+        }
+
+        /* ---------- 上一篇/下一篇导航 ---------- */
+        .post-nav {
+            margin: 30px 0 20px 0;
+            padding: 15px 20px;
+            background-color: var(--nav-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .post-nav .nav-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+        .post-nav .nav-label {
+            color: var(--text-color);
+            opacity: 0.7;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        .post-nav .nav-link {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
+        .post-nav .nav-link:hover {
+            text-decoration: underline;
+        }
+        .post-nav .nav-empty {
+            color: var(--text-color);
+            opacity: 0.5;
+            font-size: 14px;
+        }
+        .post-nav .nav-divider {
+            border-top: 1px solid var(--border-color);
+            margin: 8px 0;
+        }
+
+        /* 错误提示 */
+        .error-msg {
+            color: #f85149;
+            padding: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 工具栏 ===== -->
+    <div class="toolbar">
+        <a href="index.html">
+            <button id="homeBtn">📚 返回目录</button>
+        </a>
+        <button id="themeToggle">☀️ 切换到浅色</button>
+    </div>
+
+    <!-- ===== Markdown 渲染容器 ===== -->
+    <div id="preview">
+        <p style="text-align:center; opacity:0.6;">正在加载文章…</p>
+    </div>
+
+    <!-- ===== 上一篇 / 下一篇 导航容器 ===== -->
+    <div class="post-nav" id="postNav">
+        <!-- 由 JavaScript 动态生成 -->
+    </div>
+
+    <script>
+        // ============================================================
+        // ① 登录拦截（可选，保留占位）
+        // ============================================================
+        // (function checkLogin() {
+        //     const user = localStorage.getItem('user');
+        //     if (!user) {
+        //         window.location.href = 'login.html';
+        //     }
+        // })();
+
+        // ============================================================
+        // ② Supabase 客户端初始化
+        // ============================================================
+        const SUPABASE_URL = 'https://rpmtgbxbeozqtjaubexs.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_kji7RPyknvsTQAWWpLySHA_UuQi0pjq';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ============================================================
+        // ③ 深色模式切换（使用 body.light 类）
+        // ============================================================
+        const toggleBtn = document.getElementById('themeToggle');
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+
+        function setTheme(theme) {
+            if (theme === 'light') {
+                document.body.classList.add('light');
+                toggleBtn.textContent = '🌙 切换到深色';
+            } else {
+                document.body.classList.remove('light');
+                toggleBtn.textContent = '☀️ 切换到浅色';
+            }
+            localStorage.setItem('theme', theme);
+        }
+        setTheme(currentTheme);
+
+        toggleBtn.addEventListener('click', function() {
+            const isLight = document.body.classList.contains('light');
+            setTheme(isLight ? 'dark' : 'light');
+        });
+
+        // ============================================================
+        // ④ 配置 marked（使用本地 highlight.js）
+        // ============================================================
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        // ============================================================
+        // ⑤ 核心数据加载逻辑（从 Supabase 获取文章）
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const storyId = urlParams.get('id');
+
+            async function loadStory() {
+                if (!storyId) {
+                    document.getElementById('preview').innerHTML = '<p class="error-msg">未指定文章 ID</p>';
+                    document.getElementById('postNav').innerHTML = '';
+                    return;
+                }
+
+                try {
+                    // 1. 获取单篇文章
+                    const { data: story, error } = await supabaseClient
+                        .from('stories')
+                        .select('*')
+                        .eq('id', storyId)
+                        .single();
+
+                    if (error) throw error;
+                    if (!story) {
+                        document.getElementById('preview').innerHTML = '<p class="error-msg">文章不存在</p>';
+                        document.getElementById('postNav').innerHTML = '';
+                        return;
+                    }
+
+                    // 2. 渲染 Markdown 内容
+                    const previewEl = document.getElementById('preview');
+                    previewEl.innerHTML = marked.parse(story.content || '（内容为空）');
+                    document.title = (story.title || '未命名') + ' · 同学录趣事';
+
+                    // 3. 获取所有文章（用于导航）
+                    const { data: all, error: allError } = await supabaseClient
+                        .from('stories')
+                        .select('id, title')
+                        .order('id', { ascending: true });
+
+                    if (allError) throw allError;
+                    renderNav(storyId, all || []);
+
+                } catch (err) {
+                    console.error('加载失败:', err);
+                    document.getElementById('preview').innerHTML = '<p class="error-msg">加载失败，请刷新重试</p>';
+                    document.getElementById('postNav').innerHTML = '';
+                }
+            }
+
+            // 4. 导航渲染函数
+            function renderNav(currentId, allStories) {
+                const navContainer = document.getElementById('postNav');
+                const idx = allStories.findIndex(s => s.id === currentId);
+                const prev = idx > 0 ? allStories[idx - 1] : null;
+                const next = idx < allStories.length - 1 ? allStories[idx + 1] : null;
+
+                let html = '';
+                html += `<div class="nav-row">`;
+                html += `<span class="nav-label">上一篇：</span>`;
+                if (prev) {
+                    html += `<a href="story.html?id=${prev.id}" class="nav-link">${prev.title}</a>`;
+                } else {
+                    html += `<span class="nav-empty">没有了</span>`;
+                }
+                html += `</div>`;
+
+                html += `<div class="nav-divider"></div>`;
+
+                html += `<div class="nav-row">`;
+                html += `<span class="nav-label">下一篇：</span>`;
+                if (next) {
+                    html += `<a href="story.html?id=${next.id}" class="nav-link">${next.title}</a>`;
+                } else {
+                    html += `<span class="nav-empty">没有了</span>`;
+                }
+                html += `</div>`;
+
+                navContainer.innerHTML = html;
+            }
+
+            loadStory();
+        });
+    </script>
+</body>
+</html>
