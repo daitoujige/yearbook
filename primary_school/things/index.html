@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -281,7 +280,7 @@
     </div>
 
     <!-- ============================================================
-    3. 文章列表区块（无外框）
+    3. 文章列表容器（#storyList 已预留）
     ============================================================ -->
     <div class="list-block">
         <div class="list-label">📄 文章列表</div>
@@ -297,17 +296,17 @@
     </div>
 
     <!-- ============================================================
-    4. Supabase 初始化 & 数据加载脚本
+    4. Supabase 初始化 & 数据加载脚本（仅新增逻辑，不改动已有样式）
     ============================================================ -->
     <script>
         (function() {
             'use strict';
 
-            // ---------- Supabase 配置（已提供） ----------
-            const SUPABASE_URL = 'https://rpmtgbxbeozqtjaubexs.co';
+            // ---------- Supabase 配置（已提供，修正 URL） ----------
+            const SUPABASE_URL = 'https://rpmtgbxbeozqtjaubexs.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_kji7RPyknvsTQAWWpLySHA_UuQi0pjq';
 
-            // 初始化 Supabase 客户端（挂载到 window 供全局使用）
+            // 初始化 Supabase 客户端（如果全局已有则复用）
             if (typeof supabaseClient === 'undefined') {
                 window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
@@ -330,6 +329,7 @@
             }
 
             function checkLogin() {
+                // 尝试从 window 上获取 sign_in.js 暴露的函数
                 const candidates = [
                     window.isLoggedIn,
                     window.checkLogin,
@@ -358,7 +358,7 @@
                 updateBadge(false);
             }
 
-            // ---------- 加载文章列表（核心逻辑） ----------
+            // ---------- 加载文章列表（核心逻辑，与示例一致） ----------
             async function loadStories() {
                 try {
                     // 显示加载状态
