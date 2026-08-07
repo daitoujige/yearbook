@@ -255,69 +255,73 @@
             const storyId = urlParams.get('id');
 
             async function loadStory() {
-    if (!storyId) {
-        document.getElementById('preview').innerHTML = '<p class="error-msg">未指定文章 ID</p>';
-        document.getElementById('postNav').innerHTML = '';
-        return;
-    }
+                if (!storyId) {
+                    document.getElementById('preview').innerHTML = '<p class="error-msg">未指定文章 ID</p>';
+                    document.getElementById('postNav').innerHTML = '';
+                    return;
+                }
 
-    try {
-        // 获取当前用户学号
-        const userInfo = sessionStorage.getItem('user_info');
-        if (!userInfo) {
-            document.getElementById('preview').innerHTML = '<p class="error-msg">未获取到用户信息，请重新登录</p>';
-            return;
-        }
-        const user = JSON.parse(userInfo);
-        const userId = user.id;
+                try {
+                    // 获取当前用户学号
+                    const userInfo = sessionStorage.getItem('user_info');
+                    if (!userInfo) {
+                        document.getElementById('preview').innerHTML = '<p class="error-msg">未获取到用户信息，请重新登录</p>';
+                        return;
+                    }
+                    const user = JSON.parse(userInfo);
+                    const userId = user.id;
 
-        // ★★★ 改用 RPC 函数 ★★★
-        const { data, error } = await supabaseClient.rpc('get_story_by_id', {
-            p_user_id: userId,
-            p_story_id: parseInt(storyId)
-        });
+                    // ★★★ 改用 RPC 函数 ★★★
+                    const { data, error } = await supabaseClient.rpc('get_story_by_id', {
+                        p_user_id: userId,
+                        p_story_id: parseInt(storyId)
+                    });
 
-        if (error) {
-            console.error('RPC 调用失败:', error);
-            document.getElementById('preview').innerHTML = `<p class="error-msg">加载失败：${error.message}</p>`;
-            return;
-        }
+                    if (error) {
+                        console.error('RPC 调用失败:', error);
+                        document.getElementById('preview').innerHTML = `<p class="error-msg">加载失败：${error.message}</p>`;
+                        return;
+                    }
 
-        if (!data || !data.success) {
-            document.getElementById('preview').innerHTML = `<p class="error-msg">${data?.message || '加载失败'}</p>`;
-            return;
-        }
+                    if (!data || !data.success) {
+                        document.getElementById('preview').innerHTML = `<p class="error-msg">${data?.message || '加载失败'}</p>`;
+                        return;
+                    }
 
-        const story = data.story;
-        if (!story) {
-            document.getElementById('preview').innerHTML = '<p class="error-msg">文章不存在</p>';
-            return;
-        }
+                    const story = data.story;
+                    if (!story) {
+                        document.getElementById('preview').innerHTML = '<p class="error-msg">文章不存在</p>';
+                        return;
+                    }
 
-        // 渲染 Markdown
-        const previewEl = document.getElementById('preview');
-        previewEl.innerHTML = marked.parse(story.content || '（内容为空）');
-        document.title = (story.title || '未命名') + ' · 同学录趣事';
+                    // 渲染 Markdown
+                    const previewEl = document.getElementById('preview');
+                    previewEl.innerHTML = marked.parse(story.content || '（内容为空）');
+                    document.title = (story.title || '未命名') + ' · 同学录趣事';
 
-        // 获取所有文章用于导航
-        const { data: allData, error: allError } = await supabaseClient.rpc('get_all_story_titles', {
-            p_user_id: userId
-        });
+                    // 获取所有文章用于导航（已按 id ASC 排序）
+                    const { data: allData, error: allError } = await supabaseClient.rpc('get_all_story_titles', {
+                        p_user_id: userId
+                    });
 
-        if (allError) throw allError;
-        renderNav(storyId, allData || []);
+                    if (allError) throw allError;
+                    renderNav(storyId, allData || []);
 
-    } catch (err) {
-        console.error('加载失败:', err);
-        document.getElementById('preview').innerHTML = '<p class="error-msg">加载失败，请刷新重试</p>';
-        document.getElementById('postNav').innerHTML = '';
-    }
-}
+                } catch (err) {
+                    console.error('加载失败:', err);
+                    document.getElementById('preview').innerHTML = '<p class="error-msg">加载失败，请刷新重试</p>';
+                    document.getElementById('postNav').innerHTML = '';
+                }
+            }
 
-            // 4. 导航渲染函数
+            // ============================================================
+            // ⑥ 导航渲染函数（已修正类型匹配）
+            // ============================================================
             function renderNav(currentId, allStories) {
                 const navContainer = document.getElementById('postNav');
-                const idx = allStories.findIndex(s => s.id === currentId);
+                // 将当前 ID 转为数字，与数据库返回的 id 类型一致
+                const currentIdNum = Number(currentId);
+                const idx = allStories.findIndex(s => Number(s.id) === currentIdNum);
                 const prev = idx > 0 ? allStories[idx - 1] : null;
                 const next = idx < allStories.length - 1 ? allStories[idx + 1] : null;
 
