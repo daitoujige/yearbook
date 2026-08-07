@@ -258,7 +258,7 @@
 
             } catch (err) {
                 console.error('登录异常:', err);
-                showMsg('学号或姓名错误，请重试', 'error');
+                showMsg('学号或姓名错误或超时，请重试', 'error');
             } finally {
                 loginBtn.disabled = false;
                 loginBtn.textContent = '🔑 进入同学录';
