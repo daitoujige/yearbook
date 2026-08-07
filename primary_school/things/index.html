@@ -360,65 +360,77 @@
 
             // ---------- 加载文章列表（核心逻辑，与示例一致） ----------
             async function loadStories() {
-                try {
-                    // 显示加载状态
-                    listContainer.innerHTML = '<div class="empty-state">⏳ 加载中...</div>';
+    try {
+        listContainer.innerHTML = '<div class="empty-state">⏳ 加载中...</div>';
 
-                    // 查询 Supabase 表 stories，获取 id 和 title，按 id 降序
-                    const { data, error } = await window.supabaseClient
-                        .from('stories')
-                        .select('id, title')
-                        .order('id', { ascending: false });
+        // 获取当前用户学号（从 sessionStorage）
+        const userInfo = sessionStorage.getItem('user_info');
+        if (!userInfo) {
+            listContainer.innerHTML = '<div class="error-state">❌ 未获取到用户信息，请重新登录。</div>';
+            return;
+        }
+        const user = JSON.parse(userInfo);
+        const userId = user.id; // 学号
 
-                    // 处理错误
-                    if (error) {
-                        console.error('[班级趣事] Supabase 查询失败:', error);
-                        listContainer.innerHTML = `
-                            <div class="error-state">❌ 加载失败，请稍后重试。<br>
-                            <span style="font-size:0.8rem;color:#555;">${error.message || ''}</span></div>
-                        `;
-                        return;
-                    }
+        // 调用 RPC 函数 get_stories
+        const { data, error } = await window.supabaseClient.rpc('get_stories', {
+            p_user_id: userId
+        });
 
-                    // 无数据
-                    if (!data || data.length === 0) {
-                        listContainer.innerHTML = `
-                            <div class="empty-state">📭 还没有趣事，快来添加吧！</div>
-                        `;
-                        return;
-                    }
+        if (error) {
+            console.error('[班级趣事] RPC 调用失败:', error);
+            listContainer.innerHTML = `
+                <div class="error-state">
+                    ❌ 加载失败。<br>
+                    <span style="font-size:0.8rem;color:#555;">错误详情：${error.message || error}</span>
+                </div>
+            `;
+            return;
+        }
 
-                    // 渲染列表：每项显示 #id 和 标题，点击跳转 story.html?id=xxx
-                    let html = '';
-                    data.forEach(function(item) {
-                        const id = item.id;
-                        const title = item.title || '（无标题）';
-                        // 对标题进行 HTML 转义，防止 XSS
-                        const safeTitle = title.replace(/[&<>"]/g, function(m) {
-                            if (m === '&') return '&amp;';
-                            if (m === '<') return '&lt;';
-                            if (m === '>') return '&gt;';
-                            if (m === '"') return '&quot;';
-                            return m;
-                        });
-                        html += `
-                            <a class="article-btn" href="story.html?id=${id}">
-                                <span class="num">#${String(id).padStart(2, '0')}</span>
-                                <span class="title">${safeTitle}</span>
-                                <span class="arrow">→</span>
-                            </a>
-                        `;
-                    });
-                    listContainer.innerHTML = html;
+        if (!data.success) {
+            listContainer.innerHTML = `
+                <div class="error-state">❌ ${data.message || '无权限访问趣事'}</div>
+            `;
+            return;
+        }
 
-                } catch (err) {
-                    console.error('[班级趣事] 加载异常:', err);
-                    listContainer.innerHTML = `
-                        <div class="error-state">❌ 加载失败，请检查网络连接。<br>
-                        <span style="font-size:0.8rem;color:#555;">${err.message || ''}</span></div>
-                    `;
-                }
-            }
+        const stories = data.stories || [];
+        if (stories.length === 0) {
+            listContainer.innerHTML = `<div class="empty-state">📭 还没有趣事，快来添加吧！</div>`;
+            return;
+        }
+
+        // 渲染列表
+        let html = '';
+        stories.forEach(function(item) {
+            const id = item.id;
+            const title = item.title || '（无标题）';
+            const safeTitle = title.replace(/[&<>"]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                if (m === '"') return '&quot;';
+                return m;
+            });
+            html += `
+                <a class="article-btn" href="story.html?id=${id}">
+                    <span class="num">#${String(id).padStart(2, '0')}</span>
+                    <span class="title">${safeTitle}</span>
+                    <span class="arrow">→</span>
+                </a>
+            `;
+        });
+        listContainer.innerHTML = html;
+
+    } catch (err) {
+        console.error('[班级趣事] 加载异常:', err);
+        listContainer.innerHTML = `
+            <div class="error-state">❌ 加载失败，请检查网络连接。<br>
+            <span style="font-size:0.8rem;color:#555;">${err.message || ''}</span></div>
+        `;
+    }
+}
 
             // ---------- 页面初始化 ----------
             if (document.readyState === 'loading') {
