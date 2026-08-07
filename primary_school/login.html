@@ -238,12 +238,12 @@
 
                 if (error) {
                     console.error('RPC 错误:', error);
-                    showMsg('学号或姓名错误，请重试', 'error');
+                    showMsg('学号或姓名错误或超时，请重试', 'error');
                     return;
                 }
 
                 if (!data.success) {
-                    showMsg(data.message || '学号或姓名错误，请重试', 'error');
+                    showMsg(data.message || '学号或姓名错误或超时，请重试', 'error');
                     return;
                 }
 
