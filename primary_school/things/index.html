@@ -363,14 +363,14 @@
     try {
         listContainer.innerHTML = '<div class="empty-state">⏳ 加载中...</div>';
 
-        // 获取当前用户学号（从 sessionStorage）
+        // 获取用户学号
         const userInfo = sessionStorage.getItem('user_info');
         if (!userInfo) {
             listContainer.innerHTML = '<div class="error-state">❌ 未获取到用户信息，请重新登录。</div>';
             return;
         }
         const user = JSON.parse(userInfo);
-        const userId = user.id; // 学号
+        const userId = user.id;
 
         // 调用 RPC 函数 get_stories
         const { data, error } = await window.supabaseClient.rpc('get_stories', {
@@ -388,9 +388,9 @@
             return;
         }
 
-        if (!data.success) {
+        if (!data || !data.success) {
             listContainer.innerHTML = `
-                <div class="error-state">❌ ${data.message || '无权限访问趣事'}</div>
+                <div class="error-state">❌ ${data?.message || '无权限访问趣事'}</div>
             `;
             return;
         }
@@ -431,7 +431,6 @@
         `;
     }
 }
-
             // ---------- 页面初始化 ----------
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function() {
