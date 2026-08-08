@@ -248,7 +248,7 @@
         });
 
         // ============================================================
-        // ⑤ 核心数据加载逻辑（从 Supabase 获取文章）
+        // ⑤ 核心数据加载逻辑（使用新的 RPC 函数）
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -266,13 +266,14 @@
                     const userInfo = sessionStorage.getItem('user_info');
                     if (!userInfo) {
                         document.getElementById('preview').innerHTML = '<p class="error-msg">未获取到用户信息，请重新登录</p>';
+                        document.getElementById('postNav').innerHTML = '';
                         return;
                     }
                     const user = JSON.parse(userInfo);
                     const userId = user.id;
 
-                    // ★★★ 改用 RPC 函数 ★★★
-                    const { data, error } = await supabaseClient.rpc('get_story_by_id', {
+                    // ★★★ 调用新的 RPC 函数 get_story_with_nav ★★★
+                    const { data, error } = await supabaseClient.rpc('get_story_with_nav', {
                         p_user_id: userId,
                         p_story_id: parseInt(storyId)
                     });
@@ -280,32 +281,30 @@
                     if (error) {
                         console.error('RPC 调用失败:', error);
                         document.getElementById('preview').innerHTML = `<p class="error-msg">加载失败：${error.message}</p>`;
+                        document.getElementById('postNav').innerHTML = '';
                         return;
                     }
 
                     if (!data || !data.success) {
                         document.getElementById('preview').innerHTML = `<p class="error-msg">${data?.message || '加载失败'}</p>`;
+                        document.getElementById('postNav').innerHTML = '';
                         return;
                     }
 
                     const story = data.story;
                     if (!story) {
                         document.getElementById('preview').innerHTML = '<p class="error-msg">文章不存在</p>';
+                        document.getElementById('postNav').innerHTML = '';
                         return;
                     }
 
-                    // 渲染 Markdown
+                    // 渲染 Markdown 内容
                     const previewEl = document.getElementById('preview');
                     previewEl.innerHTML = marked.parse(story.content || '（内容为空）');
                     document.title = (story.title || '未命名') + ' · 同学录趣事';
 
-                    // 获取所有文章用于导航（已按 id ASC 排序）
-                    const { data: allData, error: allError } = await supabaseClient.rpc('get_all_story_titles', {
-                        p_user_id: userId
-                    });
-
-                    if (allError) throw allError;
-                    renderNav(storyId, allData || []);
+                    // 渲染导航（直接使用返回的 prev 和 next）
+                    renderNav(data.prev, data.next);
 
                 } catch (err) {
                     console.error('加载失败:', err);
@@ -315,20 +314,16 @@
             }
 
             // ============================================================
-            // ⑥ 导航渲染函数（已修正类型匹配）
+            // ⑥ 导航渲染函数（接收 prev 和 next 对象）
             // ============================================================
-            function renderNav(currentId, allStories) {
+            function renderNav(prev, next) {
                 const navContainer = document.getElementById('postNav');
-                // 将当前 ID 转为数字，与数据库返回的 id 类型一致
-                const currentIdNum = Number(currentId);
-                const idx = allStories.findIndex(s => Number(s.id) === currentIdNum);
-                const prev = idx > 0 ? allStories[idx - 1] : null;
-                const next = idx < allStories.length - 1 ? allStories[idx + 1] : null;
 
                 let html = '';
+                // 上一篇
                 html += `<div class="nav-row">`;
                 html += `<span class="nav-label">上一篇：</span>`;
-                if (prev) {
+                if (prev && prev.id) {
                     html += `<a href="story.html?id=${prev.id}" class="nav-link">${prev.title}</a>`;
                 } else {
                     html += `<span class="nav-empty">没有了</span>`;
@@ -337,9 +332,10 @@
 
                 html += `<div class="nav-divider"></div>`;
 
+                // 下一篇
                 html += `<div class="nav-row">`;
                 html += `<span class="nav-label">下一篇：</span>`;
-                if (next) {
+                if (next && next.id) {
                     html += `<a href="story.html?id=${next.id}" class="nav-link">${next.title}</a>`;
                 } else {
                     html += `<span class="nav-empty">没有了</span>`;
