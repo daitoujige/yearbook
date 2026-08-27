@@ -8,13 +8,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
 
-    <!-- 如果已登录则跳转（优先跳回之前页面） -->
+    <!-- 如果已登录则跳转（优先跳回之前页面，但不清除 backUrl） -->
     <script>
         if (sessionStorage.getItem('is_logged_in') === 'true') {
-            // 获取保存的返回 URL，若无则跳转首页
-            const backUrl = sessionStorage.getItem('backUrl') || 'index.html';
-            sessionStorage.removeItem('backUrl'); // 清除以防污染
-            window.location.href = backUrl;
+            const backUrl = sessionStorage.getItem('backUrl');
+            if (backUrl && !backUrl.includes('login.html')) {
+                window.location.href = backUrl;
+            } else {
+                window.location.href = 'index.html';
+            }
+            // 阻止后续脚本执行
+            throw new Error('已登录，跳转中');
         }
         console.log('✅ 登录页脚本开始执行');
     </script>
